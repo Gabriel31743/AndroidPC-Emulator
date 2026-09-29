@@ -1,0 +1,1 @@
+This prototype is provided for development and experimentation. Add a license of your choice before redistributing the project.
