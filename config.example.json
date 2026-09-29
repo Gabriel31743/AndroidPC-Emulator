@@ -1,0 +1,12 @@
+{
+  "qemu_path": "qemu-system-x86_64",
+  "adb_path": "adb",
+  "android_image": "images/android.img",
+  "memory_mb": 4096,
+  "cpus": 4,
+  "width": 1280,
+  "height": 720,
+  "audio": true,
+  "network": true,
+  "adb_port": 5555
+}
