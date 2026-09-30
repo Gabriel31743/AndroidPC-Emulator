@@ -2,13 +2,13 @@
 Google Play / Games integration helpers
 for AndroidPC-Emulator.
 
-Este módulo NÃO contém nem redistribui arquivos da Google.
-Ele apenas usa ADB para trabalhar com uma imagem Android
-que você já tenha instalado e que seja compatível com Google Play.
+Este módulo não distribui arquivos do Google.
+Ele usa ADB para trabalhar com uma imagem Android
+que já tenha Google Play compatível.
 """
 
-import subprocess
 import shutil
+import subprocess
 from pathlib import Path
 
 
@@ -34,7 +34,7 @@ class GoogleGames:
         )
 
     def run_adb(self, *arguments, timeout=30):
-        """Executa um comando ADB no dispositivo Android."""
+        """Executa um comando ADB no Android."""
         adb = self.find_adb()
 
         command = [
@@ -84,11 +84,11 @@ class GoogleGames:
         )
 
         if result.returncode != 0:
-            return None
+            return ""
 
         return result.stdout.strip()
 
-    def architecture(self):
+    def android_architecture(self):
         """Obtém a arquitetura do Android."""
         result = self.run_adb(
             "shell",
@@ -97,11 +97,11 @@ class GoogleGames:
         )
 
         if result.returncode != 0:
-            return None
+            return ""
 
         return result.stdout.strip()
 
-    def list_installed_apps(self):
+    def list_packages(self):
         """Lista os aplicativos instalados."""
         result = self.run_adb(
             "shell",
@@ -125,9 +125,24 @@ class GoogleGames:
 
         return packages
 
-    def install_apk(self, apk_file):
-        """Instala um APK no Android."""
-        apk = Path(apk_file)
+    def has_google_play(self):
+        """Verifica se o Google Play Store está instalado."""
+        packages = self.list_packages()
+
+        google_packages = {
+            "com.android.vending",
+            "com.google.android.gms",
+            "com.google.android.gsf",
+        }
+
+        return any(
+            package in packages
+            for package in google_packages
+        )
+
+    def install_apk(self, apk_path):
+        """Instala um APK através do ADB."""
+        apk = Path(apk_path)
 
         if not apk.exists():
             raise FileNotFoundError(
@@ -138,15 +153,11 @@ class GoogleGames:
             "install",
             "-r",
             str(apk),
-            timeout=180
+            timeout=120
         )
 
-    def launch_package(self, package_name):
-        """
-        Tenta iniciar um aplicativo instalado.
-
-        O nome do pacote deve ser conhecido.
-        """
+    def launch_app(self, package_name):
+        """Abre um aplicativo pelo nome do pacote."""
         return self.run_adb(
             "shell",
             "monkey",
@@ -155,8 +166,8 @@ class GoogleGames:
             "1"
         )
 
-    def stop_package(self, package_name):
-        """Encerra um aplicativo."""
+    def stop_app(self, package_name):
+        """Fecha um aplicativo."""
         return self.run_adb(
             "shell",
             "am",
@@ -164,40 +175,55 @@ class GoogleGames:
             package_name
         )
 
+    def open_play_store(self):
+        """Abre a Google Play Store."""
+        return self.launch_app(
+            "com.android.vending"
+        )
+
+    def open_google_games(self):
+        """Tenta abrir o Google Play Games."""
+        packages = [
+            "com.google.android.play.games",
+            "com.google.android.play.games.services",
+        ]
+
+        installed = self.list_packages()
+
+        for package in packages:
+            if package in installed:
+                return self.launch_app(package)
+
+        return None
+
     def device_info(self):
         """Retorna informações básicas do Android."""
         return {
             "connected": self.check_connection(),
-            "android": self.android_version(),
-            "architecture": self.architecture()
+            "android_version": self.android_version(),
+            "architecture": self.android_architecture(),
+            "google_play": self.has_google_play(),
         }
 
 
 def main():
-    """
-    Teste simples quando o arquivo é executado diretamente.
-    """
-
+    """Teste simples do módulo."""
     google = GoogleGames()
 
     try:
-        result = google.connect()
-
-        print(result.stdout.strip())
-
-        if not google.check_connection():
-            print("Android não conectado.")
-            return
+        google.connect()
 
         info = google.device_info()
 
-        print("Android:", info["android"])
-        print("Arquitetura:", info["architecture"])
-
-        print("\nIntegração ADB funcionando.")
+        print("AndroidPC Emulator")
+        print("------------------")
+        print(f"Conectado: {info['connected']}")
+        print(f"Android: {info['android_version']}")
+        print(f"Arquitetura: {info['architecture']}")
+        print(f"Google Play: {info['google_play']}")
 
     except Exception as error:
-        print("Erro:", error)
+        print(f"Erro: {error}")
 
 
 if __name__ == "__main__":
